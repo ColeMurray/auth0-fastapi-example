@@ -1,0 +1,244 @@
+<html>
+  <head>
+    <title>Sign In</title>
+    <style>
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .container { 
+        width: 100%;
+        max-width: 400px;
+        padding: 1rem;
+      }
+      .card { 
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+      }
+      .logo {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      .logo h1 {
+        margin: 0;
+        color: #1f2937;
+        font-size: 1.75rem;
+      }
+      .tabs {
+        display: flex;
+        border-bottom: 2px solid #e5e7eb;
+        margin-bottom: 1.5rem;
+      }
+      .tab {
+        flex: 1;
+        padding: 0.75rem;
+        text-align: center;
+        cursor: pointer;
+        border: none;
+        background: none;
+        color: #6b7280;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+      .tab.active {
+        color: #4f46e5;
+        border-bottom: 2px solid #4f46e5;
+        margin-bottom: -2px;
+      }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+      
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #374151;
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+      
+      input {
+        width: 100%;
+        padding: 0.625rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        transition: border-color 0.15s;
+        box-sizing: border-box;
+      }
+      
+      input:focus {
+        outline: none;
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+      }
+      
+      button {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        background: #4f46e5;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s;
+        margin-top: 1rem;
+      }
+      
+      button:hover {
+        background: #4338ca;
+      }
+      
+      .field-group {
+        margin-bottom: 1rem;
+      }
+      
+      .helper-text {
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+      }
+      
+      .footer-text {
+        text-align: center;
+        margin-top: 1.5rem;
+        font-size: 0.875rem;
+        color: #6b7280;
+      }
+      
+      .footer-text a {
+        color: #4f46e5;
+        text-decoration: none;
+      }
+      
+      .footer-text a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <div class="logo">
+          <h1>Your App</h1>
+        </div>
+        
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('login')">Sign In</button>
+          <button class="tab" onclick="switchTab('signup')">New Organization</button>
+        </div>
+        
+        <!-- Login Tab -->
+        <div id="login" class="tab-content active">
+          <form onsubmit="handleLogin(event)">
+            <div class="field-group">
+              <label for="orgId">Organization ID</label>
+              <input 
+                type="text" 
+                id="orgId" 
+                name="orgId"
+                placeholder="your-organization" 
+                required
+              />
+              <div class="helper-text">
+                Enter your organization's unique identifier
+              </div>
+            </div>
+            
+            <button type="submit">Continue to Sign In →</button>
+          </form>
+          
+          <div class="footer-text">
+            Don't have an organization? 
+            <a href="#" onclick="switchTab('signup'); return false;">Create one</a>
+          </div>
+        </div>
+        
+        <!-- Signup Tab -->
+        <div id="signup" class="tab-content">
+          <form method="post" action="/onboard/init">
+            <div class="field-group">
+              <label for="company_name">Company Name</label>
+              <input 
+                type="text"
+                id="company_name"
+                name="company_name" 
+                placeholder="Acme Inc."
+                required
+              />
+            </div>
+            
+            <div class="field-group">
+              <label for="email">Your Email</label>
+              <input 
+                type="email"
+                id="email"
+                name="email" 
+                placeholder="you@company.com"
+                required 
+              />
+              <div class="helper-text">
+                We'll send you an invitation to complete setup
+              </div>
+            </div>
+            
+            <button type="submit">Create Organization</button>
+          </form>
+          
+          <div class="footer-text">
+            Already have an account? 
+            <a href="#" onclick="switchTab('login'); return false;">Sign in</a>
+          </div>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 2rem; color: white; opacity: 0.8; font-size: 0.875rem;">
+        Secure authentication powered by Auth0
+      </div>
+    </div>
+    
+    <script>
+      function switchTab(tabName) {
+        // Update tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+          tab.classList.remove('active');
+          if (tab.textContent.toLowerCase().includes(tabName === 'login' ? 'sign in' : 'organization')) {
+            tab.classList.add('active');
+          }
+        });
+        
+        // Update content
+        document.querySelectorAll('.tab-content').forEach(content => {
+          content.classList.remove('active');
+        });
+        document.getElementById(tabName).classList.add('active');
+      }
+      
+      function handleLogin(event) {
+        event.preventDefault();
+        const orgId = document.getElementById('orgId').value.trim();
+        
+        if (!orgId) {
+          alert('Please enter your organization ID');
+          return;
+        }
+        
+        // Handle both org_xxx format and slug format
+        if (orgId.startsWith('org_')) {
+          window.location.href = '/login?organization=' + encodeURIComponent(orgId);
+        } else {
+          window.location.href = '/org/' + encodeURIComponent(orgId) + '/login';
+        }
+      }
+    </script>
+  </body>
+</html>

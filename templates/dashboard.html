@@ -1,0 +1,189 @@
+<html>
+<head>
+    <title>Organization Dashboard</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { margin: 2rem 0; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
+        .member-row { display: flex; justify-content: space-between; padding: 0.5rem; border-bottom: 1px solid #eee; }
+        button { padding: 0.5rem 1rem; margin: 0.25rem; cursor: pointer; }
+        .role-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; }
+        .owner { background: #f0f9ff; color: #0369a1; }
+        .admin { background: #fef3c7; color: #92400e; }
+        .member { background: #f3f4f6; color: #374151; }
+        .header { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Organization Dashboard</h1>
+            <div>
+                <span id="userEmail"></span>
+                <button onclick="window.location.href='/'">Switch Org</button>
+                <button onclick="logout()">Logout</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Current Session</h2>
+            <div id="authStatus"></div>
+            <button onclick="testAuth()">Refresh Session Info</button>
+        </div>
+        
+        <div class="section">
+            <h2>Organization Members</h2>
+            <button onclick="loadMembers()">Load Members</button>
+            <div id="membersList"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Invite New Member</h2>
+            <input type="email" id="inviteEmail" placeholder="Email address">
+            <select id="inviteRole">
+                <option value="org_member">Member</option>
+                <option value="org_admin">Admin</option>
+                <option value="org_owner">Owner</option>
+            </select>
+            <button onclick="inviteMember()">Send Invitation</button>
+            <div id="inviteResult"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Get user info from cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+        
+        // Parse user info on load
+        window.onload = function() {
+            const userInfo = getCookie('user_info');
+            if (userInfo) {
+                try {
+                    // Decode from base64 first, then parse JSON
+                    const decoded = atob(userInfo);
+                    const info = JSON.parse(decoded);
+                    document.getElementById('userEmail').textContent = info.email + ' | ' + info.org_name;
+                    testAuth();
+                    loadMembers();
+                } catch (e) {
+                    console.error('Failed to parse user info:', e);
+                    // Try without base64 decode for backward compatibility
+                    try {
+                        const info = JSON.parse(decodeURIComponent(userInfo));
+                        document.getElementById('userEmail').textContent = info.email + ' | ' + info.org_name;
+                        testAuth();
+                        loadMembers();
+                    } catch (e2) {
+                        console.error('Failed to parse user info (legacy):', e2);
+                        window.location.href = '/';
+                    }
+                }
+            } else {
+                window.location.href = '/';
+            }
+        }
+        
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin'  // Include cookies
+            };
+            if (body) options.body = JSON.stringify(body);
+            
+            const response = await fetch(endpoint, options);
+            if (!response.ok) {
+                if (response.status === 401) {
+                    alert('Session expired. Please log in again.');
+                    window.location.href = '/';
+                    return;
+                }
+                const data = await response.json();
+                throw data;
+            }
+            return await response.json();
+        }
+        
+        function logout() {
+            window.location.href = '/logout';
+        }
+        
+        async function testAuth() {
+            try {
+                const data = await apiCall('/me');
+                document.getElementById('authStatus').innerHTML = 
+                    `<div>
+                        <p><strong>User:</strong> ${data.user.email}</p>
+                        <p><strong>Organization:</strong> ${data.org.name}</p>
+                        <p><strong>Role:</strong> <span class="role-badge ${data.role}">${data.role}</span></p>
+                    </div>`;
+            } catch (error) {
+                if (error) {
+                    document.getElementById('authStatus').innerHTML = 
+                        `<p>❌ Authentication failed: ${error.detail || error.message}</p>`;
+                }
+            }
+        }
+        
+        async function loadMembers() {
+            try {
+                const data = await apiCall('/org/members');
+                let html = `<h3>${data.organization.name} - ${data.total_count} members</h3>`;
+                html += data.can_invite ? '<p>✅ You can invite new members</p>' : '<p>❌ You cannot invite members</p>';
+                
+                data.members.forEach(member => {
+                    html += `<div class="member-row">
+                        <div>
+                            <strong>${member.user.email}</strong> 
+                            <span class="role-badge ${member.role}">${member.role}</span>
+                            ${member.is_current_user ? '(You)' : ''}
+                        </div>
+                        <div>
+                            ${!member.is_current_user && data.can_invite ? 
+                                `<button onclick="removeMember('${member.user.id}')">Remove</button>` : ''}
+                        </div>
+                    </div>`;
+                });
+                
+                document.getElementById('membersList').innerHTML = html;
+            } catch (error) {
+                document.getElementById('membersList').innerHTML = 
+                    `<p>Failed to load members: ${error.detail || error.message}</p>`;
+            }
+        }
+        
+        async function inviteMember() {
+            const email = document.getElementById('inviteEmail').value;
+            const role_key = document.getElementById('inviteRole').value;
+            
+            try {
+                const data = await apiCall('/org/invite', 'POST', { email, role_key });
+                document.getElementById('inviteResult').innerHTML = 
+                    `<p>✅ ${data.message}</p><p>Invitation URL: <a href="${data.invitation_url}" target="_blank">Open</a></p>`;
+                document.getElementById('inviteEmail').value = '';
+            } catch (error) {
+                document.getElementById('inviteResult').innerHTML = 
+                    `<p>❌ Failed: ${error.detail || error.message}</p>`;
+            }
+        }
+        
+        async function removeMember(userId) {
+            if (!confirm('Are you sure you want to remove this member?')) return;
+            
+            try {
+                await apiCall(`/org/members/${userId}`, 'DELETE');
+                alert('Member removed successfully');
+                loadMembers();
+            } catch (error) {
+                alert(`Failed to remove member: ${error.detail || error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
